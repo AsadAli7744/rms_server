@@ -21,20 +21,38 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { KitchenModule } from './modules/kitchen/kitchen.module';
 import { ReportsModule } from './modules/reports/reports.module';
 
+const databaseUrl =
+  process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
+
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: (process.env.DB_TYPE as any) ?? 'postgres',
-      host: process.env.DB_HOST ?? 'localhost',
-      port: parseInt(process.env.DB_PORT ?? '5432', 10),
-      username: process.env.DB_USER ?? 'postgres',
-      password: process.env.DB_PASSWORD ?? 'postgres',
-      database: process.env.DB_NAME ?? 'rms',
-      autoLoadEntities: true,
-      synchronize: process.env.DB_SYNCHRONIZE !== 'false',
-      migrationsRun: false,
-      logging: process.env.TYPEORM_LOGGING === 'true',
-    }),
+    TypeOrmModule.forRoot(
+      databaseUrl
+        ? {
+            type: 'postgres',
+            url: databaseUrl,
+            ssl:
+              process.env.DB_SSL === 'false'
+                ? false
+                : { rejectUnauthorized: false },
+            autoLoadEntities: true,
+            synchronize: process.env.DB_SYNCHRONIZE !== 'false',
+            migrationsRun: false,
+            logging: process.env.TYPEORM_LOGGING === 'true',
+          }
+        : {
+            type: (process.env.DB_TYPE as any) ?? 'postgres',
+            host: process.env.DB_HOST ?? 'localhost',
+            port: parseInt(process.env.DB_PORT ?? '5432', 10),
+            username: process.env.DB_USER ?? 'postgres',
+            password: process.env.DB_PASSWORD ?? 'postgres',
+            database: process.env.DB_NAME ?? 'rms',
+            autoLoadEntities: true,
+            synchronize: process.env.DB_SYNCHRONIZE !== 'false',
+            migrationsRun: false,
+            logging: process.env.TYPEORM_LOGGING === 'true',
+          },
+    ),
     SharedModule,
     LiveEventsModule,
     RestaurantsModule,

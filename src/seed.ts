@@ -22,16 +22,32 @@ import {
 } from './common/enums';
 
 async function seed() {
-  const dataSource = new DataSource({
-    type: (process.env.DB_TYPE as any) ?? 'postgres',
-    host: process.env.DB_HOST ?? 'localhost',
-    port: parseInt(process.env.DB_PORT ?? '5432', 10),
-    username: process.env.DB_USER ?? 'postgres',
-    password: process.env.DB_PASSWORD ?? 'postgres',
-    database: process.env.DB_NAME ?? 'rms',
-    entities: [__dirname + '/**/*.entity{.ts,.js}'],
-    synchronize: true,
-  });
+  const databaseUrl =
+    process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
+
+  const dataSource = new DataSource(
+    databaseUrl
+      ? {
+          type: 'postgres',
+          url: databaseUrl,
+          ssl:
+            process.env.DB_SSL === 'false'
+              ? false
+              : { rejectUnauthorized: false },
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: true,
+        }
+      : {
+          type: (process.env.DB_TYPE as any) ?? 'postgres',
+          host: process.env.DB_HOST ?? 'localhost',
+          port: parseInt(process.env.DB_PORT ?? '5432', 10),
+          username: process.env.DB_USER ?? 'postgres',
+          password: process.env.DB_PASSWORD ?? 'postgres',
+          database: process.env.DB_NAME ?? 'rms',
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: true,
+        },
+  );
 
   await dataSource.initialize();
   console.log('Database connected for seeding...');
