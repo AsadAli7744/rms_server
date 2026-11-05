@@ -1,3 +1,10 @@
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
 import { DataSource } from 'typeorm';
 import { Restaurant } from './modules/restaurants/entities/restaurant.entity';
 import { Branch } from './modules/branches/entities/branch.entity';

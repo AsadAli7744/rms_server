@@ -1,3 +1,11 @@
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Automatically load .env from current working dir or project root
+dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
@@ -21,14 +29,15 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { KitchenModule } from './modules/kitchen/kitchen.module';
 import { ReportsModule } from './modules/reports/reports.module';
 
-const databaseUrl =
-  process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
-
 @Module({
   imports: [
-    TypeOrmModule.forRoot(
-      databaseUrl
-        ? {
+    TypeOrmModule.forRootAsync({
+      useFactory: () => {
+        const databaseUrl =
+          process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
+
+        if (databaseUrl) {
+          return {
             type: 'postgres',
             url: databaseUrl,
             ssl:
@@ -39,20 +48,23 @@ const databaseUrl =
             synchronize: process.env.DB_SYNCHRONIZE !== 'false',
             migrationsRun: false,
             logging: process.env.TYPEORM_LOGGING === 'true',
-          }
-        : {
-            type: (process.env.DB_TYPE as any) ?? 'postgres',
-            host: process.env.DB_HOST ?? 'localhost',
-            port: parseInt(process.env.DB_PORT ?? '5432', 10),
-            username: process.env.DB_USER ?? 'postgres',
-            password: process.env.DB_PASSWORD ?? 'postgres',
-            database: process.env.DB_NAME ?? 'rms',
-            autoLoadEntities: true,
-            synchronize: process.env.DB_SYNCHRONIZE !== 'false',
-            migrationsRun: false,
-            logging: process.env.TYPEORM_LOGGING === 'true',
-          },
-    ),
+          };
+        }
+
+        return {
+          type: (process.env.DB_TYPE as any) ?? 'postgres',
+          host: process.env.DB_HOST ?? 'localhost',
+          port: parseInt(process.env.DB_PORT ?? '5432', 10),
+          username: process.env.DB_USER ?? 'postgres',
+          password: process.env.DB_PASSWORD ?? 'postgres',
+          database: process.env.DB_NAME ?? 'rms',
+          autoLoadEntities: true,
+          synchronize: process.env.DB_SYNCHRONIZE !== 'false',
+          migrationsRun: false,
+          logging: process.env.TYPEORM_LOGGING === 'true',
+        };
+      },
+    }),
     SharedModule,
     LiveEventsModule,
     RestaurantsModule,
