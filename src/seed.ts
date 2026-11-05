@@ -175,16 +175,17 @@ async function seed() {
 
   // 6. Users
   const usersData = [
-    { name: 'Sarah Cashier', email: 'cashier@restaurant.com', role: UserRole.CASHIER },
-    { name: 'Chef Gordon', email: 'kitchen@restaurant.com', role: UserRole.KITCHEN },
-    { name: 'David Manager', email: 'manager@restaurant.com', role: UserRole.MANAGER },
+    { name: 'SaaS Super Admin', email: 'admin@rms.com', role: UserRole.ADMIN, branch_id: null },
+    { name: 'David Manager', email: 'manager@restaurant.com', role: UserRole.MANAGER, branch_id: branch.id },
+    { name: 'Sarah Cashier', email: 'cashier@restaurant.com', role: UserRole.CASHIER, branch_id: branch.id },
+    { name: 'Chef Gordon', email: 'kitchen@restaurant.com', role: UserRole.KITCHEN, branch_id: branch.id },
   ];
   for (const u of usersData) {
     let user = await userRepo.findOne({ where: { restaurant_id: restaurant.id, email: u.email } });
     if (!user) {
       user = userRepo.create({
         restaurant_id: restaurant.id,
-        branch_id: branch.id,
+        branch_id: u.branch_id,
         name: u.name,
         email: u.email,
         role: u.role,
