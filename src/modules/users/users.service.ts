@@ -46,11 +46,11 @@ export class UsersService {
     }
 
     const existing = await this.userRepo.findOne({
-      where: { restaurant_id: dto.restaurant_id, email: dto.email.toLowerCase() },
+      where: { email: dto.email.toLowerCase(), is_archived: false },
     });
     if (existing) {
       throw new ConflictException(
-        `User with email "${dto.email}" already exists for this restaurant`,
+        `User with email "${dto.email}" already exists. Each email must belong to one user only.`,
       );
     }
 
@@ -122,6 +122,9 @@ export class UsersService {
     });
     if (!user) {
       throw new UnauthorizedException('Invalid email or user is inactive');
+    }
+    if (user.password_hash && dto.password && user.password_hash !== dto.password) {
+      throw new UnauthorizedException('Invalid email or password');
     }
     const token = `rms-token-${user.id}-${user.role}-${Date.now()}`;
     return { user, token };

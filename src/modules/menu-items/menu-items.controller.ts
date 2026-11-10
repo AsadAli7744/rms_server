@@ -19,6 +19,7 @@ import { CreateItemAddonGroupDto } from './dto/create-item-addon-group.dto';
 import { UpdateItemAddonGroupDto } from './dto/update-item-addon-group.dto';
 import { CreateItemAddonOptionDto } from './dto/create-item-addon-option.dto';
 import { UpdateItemAddonOptionDto } from './dto/update-item-addon-option.dto';
+import { PurchaseStockDto } from './dto/purchase-stock.dto';
 
 @ApiTags('menu-items')
 @Controller('menu-items')
@@ -29,6 +30,12 @@ export class MenuItemsController {
   @ApiOperation({ summary: 'Create menu item' })
   create(@Body() dto: CreateMenuItemDto) {
     return this.menuItemsService.createItem(dto);
+  }
+
+  @Post('stock/purchase')
+  @ApiOperation({ summary: 'Record inventory stock purchase / replenishment for a menu item' })
+  purchaseStock(@Body() dto: PurchaseStockDto) {
+    return this.menuItemsService.purchaseStock(dto);
   }
 
   @Get()

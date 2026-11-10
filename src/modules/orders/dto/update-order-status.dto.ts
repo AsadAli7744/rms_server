@@ -42,3 +42,10 @@ export class ApplyDiscountDto {
   @IsString()
   discount_reason?: string | null;
 }
+
+export class CancelOrderDto {
+  @ApiPropertyOptional({ description: 'Reason for order cancellation', default: 'Cancelled by cashier' })
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}

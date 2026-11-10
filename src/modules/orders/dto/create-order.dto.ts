@@ -12,7 +12,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { OrderSource } from '../../../common/enums';
+import { FulfillmentType, OrderSource } from '../../../common/enums';
 
 export class CreateOrderItemDto {
   @ApiProperty()
@@ -59,6 +59,23 @@ export class CreateOrderDto {
   @IsOptional()
   @IsEnum(OrderSource)
   source?: OrderSource;
+
+  @ApiPropertyOptional({ enum: FulfillmentType, default: FulfillmentType.DINE_IN })
+  @IsOptional()
+  @IsEnum(FulfillmentType)
+  fulfillment_type?: FulfillmentType;
+
+  @ApiPropertyOptional({ description: 'Street address for Home Delivery orders' })
+  @IsOptional()
+  @IsString()
+  delivery_address?: string | null;
+
+  @ApiPropertyOptional({ default: 0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  delivery_fee?: number;
 
   @ApiPropertyOptional()
   @IsOptional()

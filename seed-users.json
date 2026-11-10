@@ -1,0 +1,42 @@
+[
+  {
+    "name": "SaaS Super Admin",
+    "email": "admin@rms.com",
+    "password": "password123",
+    "role": "admin",
+    "isBranchSpecific": false,
+    "description": "SaaS Platform Owner - Full tenant and infrastructure management"
+  },
+  {
+    "name": "David Manager",
+    "email": "manager@restaurant.com",
+    "password": "password123",
+    "role": "manager",
+    "isBranchSpecific": true,
+    "description": "Restaurant Owner / Manager - Branch operations, tables & analytics"
+  },
+  {
+    "name": "Sarah Cashier",
+    "email": "cashier@restaurant.com",
+    "password": "password123",
+    "role": "cashier",
+    "isBranchSpecific": true,
+    "description": "Cashier Staff - POS orders, table queue & checkout"
+  },
+  {
+    "name": "Chef Gordon",
+    "email": "kitchen@restaurant.com",
+    "password": "password123",
+    "role": "kitchen",
+    "isBranchSpecific": true,
+    "description": "Kitchen Staff - Kitchen Display System (KDS) & thermal printing"
+  },
+  {
+    "name": "Alex Waiter",
+    "email": "waiter@restaurant.com",
+    "password": "password123",
+    "role": "waiter",
+    "isBranchSpecific": true,
+    "description": "Floor Waiter - Table order assistance and mobile POS"
+  }
+]

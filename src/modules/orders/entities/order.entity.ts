@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { BaseEntity } from '../../../common/shared/entities/base.entity';
 import {
+  FulfillmentType,
   OrderSource,
   OrderStatus,
   PaymentMethod,
@@ -64,6 +65,30 @@ export class Order extends BaseEntity {
     default: OrderStatus.PLACED,
   })
   status!: OrderStatus;
+
+  @Column({
+    name: 'fulfillment_type',
+    type: 'enum',
+    enum: FulfillmentType,
+    default: FulfillmentType.DINE_IN,
+  })
+  fulfillment_type!: FulfillmentType;
+
+  @Column({ name: 'delivery_address', type: 'text', nullable: true })
+  delivery_address!: string | null;
+
+  @Column({
+    name: 'delivery_fee',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: decimalColumnTransformer,
+  })
+  delivery_fee!: number;
+
+  @Column({ name: 'cancellation_reason', type: 'varchar', length: 255, nullable: true })
+  cancellation_reason!: string | null;
 
   @Column({
     type: 'decimal',

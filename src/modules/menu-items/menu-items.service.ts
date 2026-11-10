@@ -16,6 +16,7 @@ import { QueryMenuItemDto } from './dto/query-menu-item.dto';
 import { CreateItemVariantDto } from './dto/create-item-variant.dto';
 import { CreateItemAddonGroupDto } from './dto/create-item-addon-group.dto';
 import { CreateItemAddonOptionDto } from './dto/create-item-addon-option.dto';
+import { PurchaseStockDto } from './dto/purchase-stock.dto';
 import { normalizePagination } from '../../common/shared/utils/pagination.util';
 
 @Injectable()
@@ -62,6 +63,9 @@ export class MenuItemsService {
       is_veg: dto.is_veg ?? false,
       is_halal: dto.is_halal ?? false,
       is_active: dto.is_active ?? true,
+      track_stock: dto.track_stock ?? true,
+      stock_quantity: dto.track_stock === false ? 0 : (dto.stock_quantity ?? 50),
+      low_stock_threshold: dto.low_stock_threshold ?? 10,
       availability_type: dto.availability_type,
       created_by: actorId ?? null,
       updated_by: actorId ?? null,
@@ -120,6 +124,15 @@ export class MenuItemsService {
     row.is_archived = true;
     row.updated_by = actorId ?? null;
     return this.itemRepo.save(row);
+  }
+
+  async purchaseStock(dto: PurchaseStockDto, actorId?: number | null) {
+    const item = await this.findOneItem(dto.item_id);
+    item.stock_quantity = (item.stock_quantity ?? 0) + Number(dto.quantity);
+    if (actorId) {
+      item.updated_by = actorId;
+    }
+    return this.itemRepo.save(item);
   }
 
   async listVariants(itemId: number) {

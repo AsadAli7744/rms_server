@@ -100,6 +100,29 @@ export class CreateMenuItemDto {
   @IsBoolean()
   is_active?: boolean;
 
+  @ApiPropertyOptional({
+    default: true,
+    description:
+      'Whether to track inventory stock. Set false for regular items (e.g. tea, rice, bread) that impact sales & bill but do not decrement stock.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  track_stock?: boolean;
+
+  @ApiPropertyOptional({ default: 50, description: 'Initial stock quantity' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  stock_quantity?: number;
+
+  @ApiPropertyOptional({ default: 10, description: 'Low stock warning threshold' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  low_stock_threshold?: number;
+
   @ApiPropertyOptional({ enum: AvailabilityType })
   @IsOptional()
   @IsEnum(AvailabilityType)

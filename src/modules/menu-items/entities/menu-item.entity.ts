@@ -94,6 +94,15 @@ export class MenuItem extends BaseEntity {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   is_active!: boolean;
 
+  @Column({ name: 'stock_quantity', type: 'int', default: 50 })
+  stock_quantity!: number;
+
+  @Column({ name: 'track_stock', type: 'boolean', default: true })
+  track_stock!: boolean;
+
+  @Column({ name: 'low_stock_threshold', type: 'int', default: 10 })
+  low_stock_threshold!: number;
+
   @Column({
     name: 'availability_type',
     type: 'enum',

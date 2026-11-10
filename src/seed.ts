@@ -27,6 +27,7 @@ import {
   TableStatus,
   UserRole,
 } from './common/enums';
+import { SEED_USERS } from './seed/seed-users.data';
 
 async function seed() {
   const databaseUrl =
@@ -141,15 +142,17 @@ async function seed() {
     categories.push(cat);
   }
 
-  // 5. Menu Items
+  // 5. Menu Items (including Regular untracked stock items like Tea & Rice)
   const itemsData = [
-    { name: 'Cold Drinks (Soda)', slug: 'cold-drinks', price: 3.50, sku: 'BEV-001', catIndex: 0, station: StationType.BAR },
-    { name: 'Fresh Mint Lemonade', slug: 'mint-lemonade', price: 4.50, sku: 'BEV-002', catIndex: 0, station: StationType.BAR },
-    { name: 'Caesar Salad', slug: 'caesar-salad', price: 12.00, sku: 'SLD-001', catIndex: 1, station: StationType.KITCHEN },
-    { name: 'Greek Salad', slug: 'greek-salad', price: 11.50, sku: 'SLD-002', catIndex: 1, station: StationType.KITCHEN },
-    { name: 'Classic Cheeseburger', slug: 'classic-cheeseburger', price: 14.00, sku: 'BGR-001', catIndex: 2, station: StationType.KITCHEN },
-    { name: 'BBQ Bacon Burger', slug: 'bbq-bacon-burger', price: 16.50, sku: 'BGR-002', catIndex: 2, station: StationType.KITCHEN },
-    { name: 'Chocolate Lava Cake', slug: 'lava-cake', price: 8.00, sku: 'DST-001', catIndex: 3, station: StationType.DESSERT },
+    { name: 'Special Cardamom Tea', slug: 'special-cardamom-tea', price: 2.50, sku: 'TEA-001', catIndex: 0, station: StationType.BAR, track_stock: false },
+    { name: 'Basmati Steamed Rice', slug: 'basmati-steamed-rice', price: 3.50, sku: 'RCE-001', catIndex: 2, station: StationType.KITCHEN, track_stock: false },
+    { name: 'Cold Drinks (Soda)', slug: 'cold-drinks', price: 3.50, sku: 'BEV-001', catIndex: 0, station: StationType.BAR, track_stock: true },
+    { name: 'Fresh Mint Lemonade', slug: 'mint-lemonade', price: 4.50, sku: 'BEV-002', catIndex: 0, station: StationType.BAR, track_stock: true },
+    { name: 'Caesar Salad', slug: 'caesar-salad', price: 12.00, sku: 'SLD-001', catIndex: 1, station: StationType.KITCHEN, track_stock: true },
+    { name: 'Greek Salad', slug: 'greek-salad', price: 11.50, sku: 'SLD-002', catIndex: 1, station: StationType.KITCHEN, track_stock: true },
+    { name: 'Classic Cheeseburger', slug: 'classic-cheeseburger', price: 14.00, sku: 'BGR-001', catIndex: 2, station: StationType.KITCHEN, track_stock: true },
+    { name: 'BBQ Bacon Burger', slug: 'bbq-bacon-burger', price: 16.50, sku: 'BGR-002', catIndex: 2, station: StationType.KITCHEN, track_stock: true },
+    { name: 'Chocolate Lava Cake', slug: 'lava-cake', price: 8.00, sku: 'DST-001', catIndex: 3, station: StationType.DESSERT, track_stock: true },
   ];
 
   const createdItems: MenuItem[] = [];
@@ -167,31 +170,34 @@ async function seed() {
         preparation_station_type: item.station,
         is_active: true,
         availability_type: AvailabilityType.ALL_DAY,
+        track_stock: item.track_stock ?? true,
+        stock_quantity: item.track_stock === false ? 0 : 50,
       });
       menuItem = await itemRepo.save(menuItem);
     }
     createdItems.push(menuItem);
   }
 
-  // 6. Users
-  const usersData = [
-    { name: 'SaaS Super Admin', email: 'admin@rms.com', role: UserRole.ADMIN, branch_id: null },
-    { name: 'David Manager', email: 'manager@restaurant.com', role: UserRole.MANAGER, branch_id: branch.id },
-    { name: 'Sarah Cashier', email: 'cashier@restaurant.com', role: UserRole.CASHIER, branch_id: branch.id },
-    { name: 'Chef Gordon', email: 'kitchen@restaurant.com', role: UserRole.KITCHEN, branch_id: branch.id },
-  ];
-  for (const u of usersData) {
-    let user = await userRepo.findOne({ where: { restaurant_id: restaurant.id, email: u.email } });
-    if (!user) {
-      user = userRepo.create({
+  // 6. Users (Skip if user already exists in table)
+  for (const u of SEED_USERS) {
+    const userBranchId = u.isBranchSpecific ? branch.id : null;
+    let existingUser = await userRepo.findOne({
+      where: { email: u.email.toLowerCase() },
+    });
+    if (!existingUser) {
+      const newUser = userRepo.create({
         restaurant_id: restaurant.id,
-        branch_id: u.branch_id,
+        branch_id: userBranchId,
         name: u.name,
-        email: u.email,
+        email: u.email.toLowerCase(),
         role: u.role,
+        password_hash: u.password,
         is_active: true,
       });
-      await userRepo.save(user);
+      await userRepo.save(newUser);
+      console.log(`[SEED] Created user: ${u.email} (${u.role})`);
+    } else {
+      console.log(`[SEED] User "${u.email}" already exists in table. Skipping.`);
     }
   }
 

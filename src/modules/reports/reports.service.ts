@@ -29,6 +29,9 @@ export class ReportsService {
         'oi.item_name AS item_name',
         'c.name AS category_name',
         'm.sku AS sku',
+        'COALESCE(m.stock_quantity, 0) AS stock_quantity',
+        'm.track_stock AS track_stock',
+        'COALESCE(m.low_stock_threshold, 10) AS low_stock_threshold',
         'SUM(oi.quantity) AS total_quantity',
         'SUM(oi.subtotal) AS total_revenue',
         'COUNT(DISTINCT o.id) AS orders_count',
@@ -67,6 +70,9 @@ export class ReportsService {
       .addGroupBy('oi.item_name')
       .addGroupBy('c.name')
       .addGroupBy('m.sku')
+      .addGroupBy('m.stock_quantity')
+      .addGroupBy('m.track_stock')
+      .addGroupBy('m.low_stock_threshold')
       .orderBy('total_quantity', 'DESC');
 
     const rawItems = await qb.getRawMany();
@@ -76,6 +82,9 @@ export class ReportsService {
       item_name: r.item_name,
       category_name: r.category_name ?? 'Uncategorized',
       sku: r.sku ?? null,
+      stock_quantity: Number(r.stock_quantity) || 0,
+      track_stock: Boolean(r.track_stock),
+      low_stock_threshold: Number(r.low_stock_threshold) || 10,
       total_quantity: Number(r.total_quantity) || 0,
       total_revenue: Number(r.total_revenue) || 0,
       orders_count: Number(r.orders_count) || 0,
@@ -87,6 +96,8 @@ export class ReportsService {
 
     const totalUnitsSold = items.reduce((sum, i) => sum + i.total_quantity, 0);
     const totalRevenue = items.reduce((sum, i) => sum + i.total_revenue, 0);
+    const totalStockOnHand = items.reduce((sum, i) => sum + (i.track_stock ? i.stock_quantity : 0), 0);
+    const lowStockCount = items.filter((i) => i.track_stock && i.stock_quantity <= i.low_stock_threshold).length;
 
     // Fetch periodic timeline breakdown (daily / weekly / monthly)
     const timelineQb = this.orderItemRepo
@@ -167,6 +178,8 @@ export class ReportsService {
       summary: {
         total_units_sold: totalUnitsSold,
         total_revenue: Math.round(totalRevenue * 100) / 100,
+        total_stock_on_hand: totalStockOnHand,
+        low_stock_count: lowStockCount,
         distinct_items_count: items.length,
       },
       items,

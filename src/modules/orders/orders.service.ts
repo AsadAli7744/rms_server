@@ -19,6 +19,7 @@ import { ItemVariant } from '../menu-items/entities/item-variant.entity';
 import { LiveEventsService } from '../live-events/live-events.service';
 import { WebhookDispatchService } from '../webhooks/webhook-dispatch.service';
 import {
+  FulfillmentType,
   KitchenItemStatus,
   OrderSource,
   OrderStatus,
@@ -155,6 +156,12 @@ export class OrdersService {
       const itemSubtotal = unitPrice * itemDto.quantity;
       subtotal += itemSubtotal;
 
+      // Stock deduction on order placement
+      if (menuItem.track_stock) {
+        menuItem.stock_quantity = Math.max(0, (menuItem.stock_quantity ?? 0) - itemDto.quantity);
+        await this.menuItemRepo.save(menuItem);
+      }
+
       const orderItem = this.orderItemRepo.create({
         item_id: menuItem.id,
         item_name: menuItem.name,
@@ -183,7 +190,8 @@ export class OrdersService {
     const discountedSubtotal = Math.max(0, subtotal - discountAmount);
     // Taxes & service charges (5% sample standard tax)
     const taxAmount = Math.round(discountedSubtotal * 0.05 * 100) / 100;
-    const totalAmount = Math.round((discountedSubtotal + taxAmount) * 100) / 100;
+    const deliveryFee = Number(dto.delivery_fee ?? 0);
+    const totalAmount = Math.round((discountedSubtotal + taxAmount + deliveryFee) * 100) / 100;
 
     const order = this.orderRepo.create({
       restaurant_id: dto.restaurant_id,
@@ -192,6 +200,11 @@ export class OrdersService {
       order_number: orderNumber,
       source: dto.source ?? OrderSource.POS,
       status: OrderStatus.PLACED,
+      fulfillment_type:
+        dto.fulfillment_type ??
+        (dto.table_id ? FulfillmentType.DINE_IN : FulfillmentType.TAKEAWAY),
+      delivery_address: dto.delivery_address ?? null,
+      delivery_fee: deliveryFee,
       subtotal: Math.round(subtotal * 100) / 100,
       discount_type: dto.discount_type ?? null,
       discount_value: discountVal,
@@ -334,7 +347,81 @@ export class OrdersService {
     return order;
   }
 
+  async cancelOrder(id: number, reason?: string): Promise<Order> {
+    const order = await this.findOneOrder(id);
+    if (order.status === OrderStatus.CANCELLED) {
+      return order;
+    }
+
+    order.status = OrderStatus.CANCELLED;
+    order.cancellation_reason = reason || 'Cancelled by staff';
+
+    // Return stock back to menu items
+    if (order.items && order.items.length > 0) {
+      for (const item of order.items) {
+        const menuItem = await this.menuItemRepo.findOne({
+          where: { id: item.item_id },
+        });
+        if (menuItem && menuItem.track_stock) {
+          menuItem.stock_quantity = (menuItem.stock_quantity ?? 0) + item.quantity;
+          await this.menuItemRepo.save(menuItem);
+        }
+      }
+    }
+
+    // Release dining table if occupied
+    if (order.table_id != null) {
+      const remainingActive = await this.orderRepo.count({
+        where: {
+          table_id: order.table_id,
+          id: Not(order.id),
+          status: Not(In([OrderStatus.COMPLETED, OrderStatus.CANCELLED, OrderStatus.VOIDED])),
+          is_archived: false,
+        },
+      });
+      if (remainingActive === 0) {
+        await this.tableRepo.update(order.table_id, {
+          status: TableStatus.AVAILABLE,
+        });
+      }
+    }
+
+    const updated = await this.orderRepo.save(order);
+    const fullOrder = await this.findOneOrder(updated.id);
+
+    // Notify Kitchen & Cashier of cancellation
+    this.liveEventsService.publish({
+      type: 'order_status_changed',
+      branch_id: fullOrder.branch_id,
+      restaurant_id: fullOrder.restaurant_id,
+      target_roles: ['kitchen', 'cashier', 'manager'],
+      data: fullOrder,
+    });
+
+    try {
+      await this.webhookDispatch.dispatch(
+        fullOrder.restaurant_id,
+        WebhookEventType.ORDER_STATUS_CHANGED,
+        {
+          order_id: fullOrder.id,
+          order_number: fullOrder.order_number,
+          new_status: fullOrder.status,
+          cancellation_reason: fullOrder.cancellation_reason,
+        },
+        fullOrder.branch_id,
+      );
+    } catch {
+      // ignore webhook failures
+    }
+
+    return fullOrder;
+  }
+
   async updateOrderStatus(id: number, dto: UpdateOrderStatusDto): Promise<Order> {
+    if (dto.status === OrderStatus.CANCELLED) {
+      return this.cancelOrder(id, 'Status changed to cancelled');
+    }
+
     const order = await this.findOneOrder(id);
 
     order.status = dto.status;
@@ -351,10 +438,9 @@ export class OrdersService {
       }
     }
 
-    // If order is completed or cancelled, check table status
+    // If order is completed or voided, check table status
     if (
       (dto.status === OrderStatus.COMPLETED ||
-        dto.status === OrderStatus.CANCELLED ||
         dto.status === OrderStatus.VOIDED) &&
       order.table_id != null
     ) {

@@ -12,7 +12,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
-import { ApplyDiscountDto, UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { ApplyDiscountDto, CancelOrderDto, UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
 @ApiTags('orders')
 @Controller('orders')
@@ -44,6 +44,15 @@ export class OrdersController {
     @Body() dto: UpdateOrderStatusDto,
   ) {
     return this.ordersService.updateOrderStatus(id, dto);
+  }
+
+  @Patch(':id/cancel')
+  @ApiOperation({ summary: 'Cancel order, restore stock, and release dining table' })
+  cancelOrder(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CancelOrderDto,
+  ) {
+    return this.ordersService.cancelOrder(id, dto.reason);
   }
 
   @Patch(':id/discount')

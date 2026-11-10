@@ -12,7 +12,7 @@ import { Restaurant } from '../../restaurants/entities/restaurant.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 
 @Entity('users')
-@Index(['restaurant_id', 'email'], { unique: true })
+@Index(['email'], { unique: true })
 export class User extends BaseEntity {
   @PrimaryGeneratedColumn('increment')
   id!: number;
@@ -34,7 +34,7 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', length: 255 })
   name!: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, unique: true })
   email!: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
