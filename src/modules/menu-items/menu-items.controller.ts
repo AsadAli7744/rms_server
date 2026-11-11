@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { MenuItemsService } from './menu-items.service';
@@ -20,15 +21,23 @@ import { UpdateItemAddonGroupDto } from './dto/update-item-addon-group.dto';
 import { CreateItemAddonOptionDto } from './dto/create-item-addon-option.dto';
 import { UpdateItemAddonOptionDto } from './dto/update-item-addon-option.dto';
 import { PurchaseStockDto } from './dto/purchase-stock.dto';
+import { TenantAuthGuard } from '../../common/guards/tenant-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { RequestUser } from '../../common/decorators/current-user.decorator';
+import { UserRole } from '../../common/enums/user-role.enum';
 
 @ApiTags('menu-items')
 @Controller('menu-items')
+@UseGuards(TenantAuthGuard)
 export class MenuItemsController {
   constructor(private readonly menuItemsService: MenuItemsService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create menu item' })
-  create(@Body() dto: CreateMenuItemDto) {
+  create(@Body() dto: CreateMenuItemDto, @CurrentUser() user: RequestUser) {
+    if (user && user.role !== UserRole.ADMIN) {
+      dto.restaurant_id = user.restaurant_id;
+    }
     return this.menuItemsService.createItem(dto);
   }
 
@@ -39,8 +48,11 @@ export class MenuItemsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List menu items' })
-  findAll(@Query() query: QueryMenuItemDto) {
+  @ApiOperation({ summary: 'List menu items (Tenant isolated)' })
+  findAll(@Query() query: QueryMenuItemDto, @CurrentUser() user: RequestUser) {
+    if (user && user.role !== UserRole.ADMIN) {
+      query.restaurant_id = user.restaurant_id;
+    }
     return this.menuItemsService.findAllItems(query);
   }
 
