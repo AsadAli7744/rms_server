@@ -16,6 +16,7 @@ import { CreateMenuCategoryDto } from './dto/create-menu-category.dto';
 import { UpdateMenuCategoryDto } from './dto/update-menu-category.dto';
 import { QueryMenuCategoryDto } from './dto/query-menu-category.dto';
 import { TenantAuthGuard } from '../../common/guards/tenant-auth.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { RequestUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
@@ -27,7 +28,8 @@ export class MenuCategoriesController {
   constructor(private readonly menuCategoriesService: MenuCategoriesService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create menu category' })
+  @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Create menu category (Admin & Manager only)' })
   create(@Body() dto: CreateMenuCategoryDto, @CurrentUser() user: RequestUser) {
     if (user && user.role !== UserRole.ADMIN) {
       dto.restaurant_id = user.restaurant_id;
@@ -51,17 +53,28 @@ export class MenuCategoriesController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update menu category' })
-  update(
+  @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Update menu category (Admin & Manager only)' })
+  async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateMenuCategoryDto,
+    @CurrentUser() user: RequestUser,
   ) {
+    const cat = await this.menuCategoriesService.findOne(id);
+    if (user && user.role !== UserRole.ADMIN && cat.restaurant_id !== user.restaurant_id) {
+      throw new ForbiddenException('Access denied: Cannot modify categories of other restaurants.');
+    }
     return this.menuCategoriesService.update(id, dto);
   }
 
   @Post(':id/archive')
-  @ApiOperation({ summary: 'Archive menu category' })
-  archive(@Param('id', ParseIntPipe) id: number) {
+  @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Archive menu category (Admin & Manager only)' })
+  async archive(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
+    const cat = await this.menuCategoriesService.findOne(id);
+    if (user && user.role !== UserRole.ADMIN && cat.restaurant_id !== user.restaurant_id) {
+      throw new ForbiddenException('Access denied: Cannot archive categories of other restaurants.');
+    }
     return this.menuCategoriesService.archive(id);
   }
 }
