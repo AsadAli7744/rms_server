@@ -6,10 +6,11 @@ dotenv.config();
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
 import { SharedModule } from './common/shared/shared.module';
 import { RestaurantsModule } from './modules/restaurants/restaurants.module';
 import { BranchesModule } from './modules/branches/branches.module';
@@ -87,4 +88,8 @@ import { ReportsModule } from './modules/reports/reports.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(HttpLoggerMiddleware).forRoutes('*');
+  }
+}
