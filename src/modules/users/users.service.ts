@@ -14,6 +14,7 @@ import { LoginUserDto } from './dto/login-user.dto';
 import { buildPaginatedResponse } from '../../common/shared/utils/pagination.util';
 import { Restaurant } from '../restaurants/entities/restaurant.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { BranchesService } from '../branches/branches.service';
 
 @Injectable()
 export class UsersService {
@@ -24,6 +25,7 @@ export class UsersService {
     private readonly restaurantRepo: Repository<Restaurant>,
     @InjectRepository(Branch)
     private readonly branchRepo: Repository<Branch>,
+    private readonly branchesService: BranchesService,
   ) {}
 
   async create(dto: CreateUserDto): Promise<User> {
@@ -125,6 +127,19 @@ export class UsersService {
     }
     if (user.password_hash && dto.password && user.password_hash !== dto.password) {
       throw new UnauthorizedException('Invalid email or password');
+    }
+    if (user.restaurant_id) {
+      const branch = await this.branchesService.ensureDefaultBranch(
+        user.restaurant_id,
+        user.id,
+      );
+      const branchMatchesRestaurant =
+        user.branch != null && user.branch.restaurant_id === user.restaurant_id;
+      if (!branchMatchesRestaurant) {
+        user.branch_id = branch.id;
+        user.branch = branch;
+        await this.userRepo.save(user);
+      }
     }
     const token = `rms-token-${user.id}-${user.role}-${Date.now()}`;
     return { user, token };

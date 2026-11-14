@@ -29,6 +29,7 @@ import { LiveEventsModule } from './modules/live-events/live-events.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { KitchenModule } from './modules/kitchen/kitchen.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { TenantModule } from './common/tenant/tenant.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { ReportsModule } from './modules/reports/reports.module';
       },
     }),
     SharedModule,
+    TenantModule,
     LiveEventsModule,
     RestaurantsModule,
     BranchesModule,

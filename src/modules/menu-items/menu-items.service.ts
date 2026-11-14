@@ -35,22 +35,19 @@ export class MenuItemsService {
   ) {}
 
   async createItem(dto: CreateMenuItemDto, actorId?: number | null) {
-    await this.assertCategory(dto.category_id, dto.restaurant_id);
-    const exists = await this.itemRepo.exist({
-      where: {
-        restaurant_id: dto.restaurant_id,
-        slug: dto.slug,
-        is_archived: false,
-      },
-    });
-    if (exists) {
-      throw new ConflictException(`Item slug "${dto.slug}" already exists`);
-    }
+    const categoryId = dto.category_id
+      ? dto.category_id
+      : await this.ensureGeneralCategory(dto.restaurant_id, actorId);
+    await this.assertCategory(categoryId, dto.restaurant_id);
+    const slug = await this.uniqueSlug(
+      dto.restaurant_id,
+      this.slugify(dto.slug || dto.name),
+    );
     const row = this.itemRepo.create({
       restaurant_id: dto.restaurant_id,
-      category_id: dto.category_id,
+      category_id: categoryId,
       name: dto.name,
-      slug: dto.slug,
+      slug,
       short_description: dto.short_description ?? null,
       full_description: dto.full_description ?? null,
       image_url: dto.image_url ?? null,
@@ -76,6 +73,7 @@ export class MenuItemsService {
   async findAllItems(query: QueryMenuItemDto) {
     const { page, limit, skip } = normalizePagination(query);
     const qb = this.itemRepo.createQueryBuilder('i');
+    qb.leftJoinAndSelect('i.category', 'category');
     if (!query.include_archived) {
       qb.andWhere('i.is_archived = false');
     }
@@ -305,5 +303,66 @@ export class MenuItemsService {
         `Category ${categoryId} not found for restaurant ${restaurantId}`,
       );
     }
+  }
+
+  /** Items with no category are stored under a per-restaurant "General" category. */
+  private async ensureGeneralCategory(
+    restaurantId: number,
+    actorId?: number | null,
+  ): Promise<number> {
+    const existing = await this.categoryRepo.findOne({
+      where: { restaurant_id: restaurantId, slug: 'general', is_archived: false },
+    });
+    if (existing) return existing.id;
+
+    try {
+      const created = await this.categoryRepo.save(
+        this.categoryRepo.create({
+          restaurant_id: restaurantId,
+          name: 'General',
+          slug: 'general',
+          description: 'Items added without a specific category',
+          sort_order: 0,
+          is_active: true,
+          created_by: actorId ?? null,
+          updated_by: actorId ?? null,
+        }),
+      );
+      return created.id;
+    } catch {
+      const raced = await this.categoryRepo.findOne({
+        where: { restaurant_id: restaurantId, slug: 'general', is_archived: false },
+      });
+      if (raced) return raced.id;
+      throw new ConflictException('Could not assign a category for this item');
+    }
+  }
+
+  private slugify(value: string): string {
+    const base = value
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 240);
+    return base || 'item';
+  }
+
+  private async uniqueSlug(restaurantId: number, base: string): Promise<string> {
+    let candidate = base;
+    let n = 0;
+    while (
+      await this.itemRepo.exist({
+        where: {
+          restaurant_id: restaurantId,
+          slug: candidate,
+          is_archived: false,
+        },
+      })
+    ) {
+      n += 1;
+      candidate = `${base}-${n}`.slice(0, 255);
+    }
+    return candidate;
   }
 }

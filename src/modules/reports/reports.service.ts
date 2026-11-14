@@ -37,6 +37,7 @@ export class ReportsService {
         'COUNT(DISTINCT o.id) AS orders_count',
       ])
       .where('o.branch_id = :branchId', { branchId: query.branch_id })
+      .andWhere('o.restaurant_id = :restaurantId', { restaurantId: query.restaurant_id })
       .andWhere('o.status NOT IN (:...excludedStatuses)', {
         excludedStatuses: [OrderStatus.CANCELLED, OrderStatus.VOIDED],
       })
@@ -111,6 +112,7 @@ export class ReportsService {
         'SUM(oi.subtotal) AS revenue',
       ])
       .where('o.branch_id = :branchId', { branchId: query.branch_id })
+      .andWhere('o.restaurant_id = :restaurantId', { restaurantId: query.restaurant_id })
       .andWhere('o.status NOT IN (:...excludedStatuses)', {
         excludedStatuses: [OrderStatus.CANCELLED, OrderStatus.VOIDED],
       })
@@ -191,6 +193,7 @@ export class ReportsService {
     const qb = this.orderRepo
       .createQueryBuilder('order')
       .where('order.branch_id = :branchId', { branchId: query.branch_id })
+      .andWhere('order.restaurant_id = :restaurantId', { restaurantId: query.restaurant_id })
       .andWhere('order.is_archived = false');
 
     if (query.start_date) {

@@ -11,6 +11,12 @@ export class QueryBranchDto extends PaginationQueryDto {
   @IsInt()
   restaurant_id?: number;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  id?: number;
+
   @ApiPropertyOptional({ enum: BranchStatus })
   @IsOptional()
   @IsEnum(BranchStatus)

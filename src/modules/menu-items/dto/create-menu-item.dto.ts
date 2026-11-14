@@ -22,20 +22,28 @@ export class CreateMenuItemDto {
   @Type(() => Number)
   restaurant_id!: number;
 
-  @ApiProperty()
+  @ApiPropertyOptional({
+    description:
+      'Menu category. Optional — when omitted, the item is filed under General.',
+  })
+  @IsOptional()
   @IsInt()
+  @Min(1)
   @Type(() => Number)
-  category_id!: number;
+  category_id?: number;
 
   @ApiProperty()
   @IsString()
   @Length(1, 255)
   name!: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({
+    description: 'URL key. Generated from the item name when omitted.',
+  })
+  @IsOptional()
   @IsString()
   @Length(1, 255)
-  slug!: string;
+  slug?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -15,7 +15,10 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.enableCors();
+  app.enableCors({
+    origin: true,
+    credentials: true,
+  });
 
   app.useGlobalFilters(new HttpExceptionFilter());
 
@@ -36,7 +39,7 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  console.log(`Server listening on port ${port}`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`Server listening on 0.0.0.0:${port}`);
 }
 bootstrap();

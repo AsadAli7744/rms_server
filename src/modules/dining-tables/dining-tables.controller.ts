@@ -12,24 +12,33 @@ import { DiningTablesService } from './dining-tables.service';
 import { CreateDiningTableDto } from './dto/create-dining-table.dto';
 import { UpdateDiningTableDto } from './dto/update-dining-table.dto';
 import { UpdateTableStatusDto } from './dto/update-table-status.dto';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { RequestUser } from '../../common/decorators/current-user.decorator';
+import { TenantAccessService } from '../../common/tenant/tenant-access.service';
 
 @ApiTags('dining-tables')
 @Controller('branches')
 export class DiningTablesBranchController {
-  constructor(private readonly diningTablesService: DiningTablesService) {}
+  constructor(
+    private readonly diningTablesService: DiningTablesService,
+    private readonly access: TenantAccessService,
+  ) {}
 
   @Get(':branchId/tables')
   @ApiOperation({ summary: 'List dining tables for branch' })
-  list(@Param('branchId', ParseIntPipe) branchId: number) {
+  async list(@Param('branchId', ParseIntPipe) branchId: number, @CurrentUser() user: RequestUser) {
+    await this.access.assertBranch(user, branchId);
     return this.diningTablesService.listByBranch(branchId);
   }
 
   @Post(':branchId/tables')
   @ApiOperation({ summary: 'Create dining table' })
-  create(
+  async create(
     @Param('branchId', ParseIntPipe) branchId: number,
     @Body() dto: CreateDiningTableDto,
+    @CurrentUser() user: RequestUser,
   ) {
+    await this.access.assertBranch(user, branchId);
     return this.diningTablesService.create(branchId, dto);
   }
 }
@@ -37,35 +46,44 @@ export class DiningTablesBranchController {
 @ApiTags('dining-tables')
 @Controller('tables')
 export class DiningTablesController {
-  constructor(private readonly diningTablesService: DiningTablesService) {}
+  constructor(
+    private readonly diningTablesService: DiningTablesService,
+    private readonly access: TenantAccessService,
+  ) {}
 
   @Get(':id')
   @ApiOperation({ summary: 'Get dining table by id' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
+    await this.access.assertTable(user, id);
     return this.diningTablesService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update dining table' })
-  update(
+  async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateDiningTableDto,
+    @CurrentUser() user: RequestUser,
   ) {
+    await this.access.assertTable(user, id);
     return this.diningTablesService.update(id, dto);
   }
 
   @Patch(':id/status')
   @ApiOperation({ summary: 'Update dining table status' })
-  updateStatus(
+  async updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateTableStatusDto,
+    @CurrentUser() user: RequestUser,
   ) {
+    await this.access.assertTable(user, id);
     return this.diningTablesService.updateStatus(id, dto);
   }
 
   @Post(':id/archive')
   @ApiOperation({ summary: 'Soft-archive dining table' })
-  archive(@Param('id', ParseIntPipe) id: number) {
+  async archive(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
+    await this.access.assertTable(user, id);
     return this.diningTablesService.archive(id);
   }
 }

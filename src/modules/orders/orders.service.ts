@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -28,6 +29,8 @@ import {
   WebhookEventType,
 } from '../../common/enums';
 import { buildPaginatedResponse } from '../../common/shared/utils/pagination.util';
+import { UserRole } from '../../common/enums/user-role.enum';
+import type { RequestUser } from '../../common/decorators/current-user.decorator';
 
 @Injectable()
 export class OrdersService {
@@ -50,21 +53,31 @@ export class OrdersService {
     private readonly webhookDispatch: WebhookDispatchService,
   ) {}
 
-  async createOrder(dto: CreateOrderDto): Promise<Order> {
+  async createOrder(dto: CreateOrderDto, user?: RequestUser | null): Promise<Order> {
+    const branch = await this.branchRepo.findOne({
+      where: { id: dto.branch_id, is_archived: false },
+    });
+    if (!branch) {
+      throw new NotFoundException(`Branch #${dto.branch_id} not found`);
+    }
+    if (user && user.role !== UserRole.ADMIN && user.restaurant_id !== branch.restaurant_id) {
+      throw new ForbiddenException('Access denied: this branch belongs to another restaurant.');
+    }
+    if (
+      user &&
+      user.role !== UserRole.ADMIN &&
+      user.role !== UserRole.MANAGER &&
+      (user.branch_id == null || user.branch_id !== branch.id)
+    ) {
+      throw new ForbiddenException('Access denied: this branch is not assigned to your account.');
+    }
+    dto.restaurant_id = branch.restaurant_id;
+
     const restaurant = await this.restaurantRepo.findOne({
       where: { id: dto.restaurant_id, is_archived: false },
     });
     if (!restaurant) {
       throw new NotFoundException(`Restaurant #${dto.restaurant_id} not found`);
-    }
-
-    const branch = await this.branchRepo.findOne({
-      where: { id: dto.branch_id, is_archived: false },
-    });
-    if (!branch || branch.restaurant_id !== dto.restaurant_id) {
-      throw new BadRequestException(
-        `Branch #${dto.branch_id} does not belong to restaurant #${dto.restaurant_id}`,
-      );
     }
 
     let table: DiningTable | null = null;
@@ -539,10 +552,20 @@ export class OrdersService {
     return order;
   }
 
-  async getActiveOrderByTable(tableId: number): Promise<{ activeOrder: Order | null; queuedOrders: Order[] }> {
+  async getActiveOrderByTable(
+    tableId: number,
+    branchId: number,
+  ): Promise<{ activeOrder: Order | null; queuedOrders: Order[] }> {
+    const table = await this.tableRepo.findOne({
+      where: { id: tableId, branch_id: branchId, is_archived: false },
+    });
+    if (!table) {
+      throw new NotFoundException(`Dining table #${tableId} not found in branch #${branchId}`);
+    }
     const orders = await this.orderRepo.find({
       where: {
         table_id: tableId,
+        branch_id: branchId,
         status: Not(In([OrderStatus.COMPLETED, OrderStatus.CANCELLED, OrderStatus.VOIDED])),
         is_archived: false,
       },

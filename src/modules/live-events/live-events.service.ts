@@ -25,10 +25,20 @@ export class LiveEventsService {
     this.events$.next(fullEvent);
   }
 
-  getEventsStream(branchId?: number, role?: string): Observable<MessageEvent> {
+  getEventsStream(
+    branchId?: number,
+    role?: string,
+    restaurantId?: number,
+  ): Observable<MessageEvent> {
     return this.events$.asObservable().pipe(
       filter((evt) => {
+        if (restaurantId != null && evt.restaurant_id !== restaurantId) {
+          return false;
+        }
         if (branchId != null && evt.branch_id !== branchId) {
+          return false;
+        }
+        if (restaurantId != null && branchId == null) {
           return false;
         }
         if (role && evt.target_roles.length > 0 && !evt.target_roles.includes(role) && !evt.target_roles.includes('all')) {

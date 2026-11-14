@@ -13,9 +13,9 @@ export const USER_ROLE_CONFIGS: Record<UserRole, UserRoleDefinition> = {
   [UserRole.ADMIN]: {
     key: UserRole.ADMIN,
     title: 'SaaS Platform Owner',
-    description: 'System-wide tenant administration, database partitioning, and role launcher access.',
+    description: 'System-wide tenant administration.',
     scope: 'global',
-    defaultLandingPath: '/select-role',
+    defaultLandingPath: '/tenants',
     permissions: [
       'tenants:create',
       'tenants:read',
@@ -34,7 +34,7 @@ export const USER_ROLE_CONFIGS: Record<UserRole, UserRoleDefinition> = {
     title: 'Restaurant Owner / Manager',
     description: 'Branch operations, sales reports, floor management, menu pricing, and discounts.',
     scope: 'tenant',
-    defaultLandingPath: '/branches/1/item-sales',
+    defaultLandingPath: '/branches',
     permissions: [
       'branches:manage',
       'menu:manage',
@@ -50,7 +50,7 @@ export const USER_ROLE_CONFIGS: Record<UserRole, UserRoleDefinition> = {
     title: 'Cashier Staff',
     description: 'Point of sale billing, 1-order-per-table active queue enforcement, and payment settlement.',
     scope: 'branch',
-    defaultLandingPath: '/branches/1/cashier',
+    defaultLandingPath: '/branches',
     permissions: [
       'orders:create',
       'orders:read',
@@ -65,7 +65,7 @@ export const USER_ROLE_CONFIGS: Record<UserRole, UserRoleDefinition> = {
     title: 'Kitchen Staff',
     description: 'Kitchen Display System (KDS), real-time ticket progression, and thermal receipt printing.',
     scope: 'branch',
-    defaultLandingPath: '/branches/1/kitchen',
+    defaultLandingPath: '/branches',
     permissions: [
       'kds:view',
       'tickets:update-status',
@@ -78,7 +78,7 @@ export const USER_ROLE_CONFIGS: Record<UserRole, UserRoleDefinition> = {
     title: 'Floor Waiter',
     description: 'Table order creation and floor guest assistance.',
     scope: 'branch',
-    defaultLandingPath: '/branches/1/cashier',
+    defaultLandingPath: '/branches',
     permissions: [
       'orders:create',
       'tables:view',

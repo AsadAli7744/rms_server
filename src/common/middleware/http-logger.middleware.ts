@@ -22,7 +22,7 @@ export class HttpLoggerMiddleware implements NestMiddleware {
       } else {
         const authHeader = req.headers['authorization'];
         if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-          const match = authHeader.substring(7).trim().match(/^rms-(?:demo-)?token-(\d+)-([a-z]+)/i);
+          const match = authHeader.substring(7).trim().match(/^rms-token-(\d+)-([a-z]+)/i);
           if (match) {
             userTag = `${match[2]} (ID:${match[1]})`;
           }

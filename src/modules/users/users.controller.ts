@@ -6,7 +6,6 @@ import {
   ParseIntPipe,
   Post,
   Query,
-  UseGuards,
   ForbiddenException,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -14,17 +13,20 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
 import { LoginUserDto } from './dto/login-user.dto';
-import { TenantAuthGuard } from '../../common/guards/tenant-auth.guard';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { RequestUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { TenantAccessService } from '../../common/tenant/tenant-access.service';
 
 @ApiTags('users')
 @Controller('users')
-@UseGuards(TenantAuthGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly access: TenantAccessService,
+  ) {}
 
   @Post('login')
   @Public()
@@ -34,6 +36,7 @@ export class UsersController {
   }
 
   @Post()
+  @Roles(UserRole.ADMIN, UserRole.MANAGER)
   @ApiOperation({ summary: 'Create user (Cashier, Kitchen, Waiter, Manager)' })
   create(@Body() dto: CreateUserDto, @CurrentUser() user: RequestUser) {
     if (user.role !== UserRole.ADMIN) {
@@ -50,8 +53,13 @@ export class UsersController {
   @ApiOperation({ summary: 'List users with pagination and role filters (Tenant isolated)' })
   findAll(@Query() query: QueryUserDto, @CurrentUser() user: RequestUser) {
     if (user.role !== UserRole.ADMIN) {
-      // Force non-admins to only see users of their own restaurant
       query.restaurant_id = user.restaurant_id;
+    }
+    if (this.access.locksToAssignedBranch(user)) {
+      if (user.branch_id == null) {
+        throw new ForbiddenException('This account is not assigned to a branch.');
+      }
+      query.branch_id = user.branch_id;
     }
     return this.usersService.findAll(query);
   }
@@ -62,6 +70,9 @@ export class UsersController {
     const targetUser = await this.usersService.findOne(id);
     if (user.role !== UserRole.ADMIN && targetUser.restaurant_id !== user.restaurant_id) {
       throw new ForbiddenException('Access denied: You cannot view user accounts of other restaurants.');
+    }
+    if (this.access.locksToAssignedBranch(user) && targetUser.branch_id !== user.branch_id) {
+      throw new ForbiddenException('Access denied: this record belongs to another branch.');
     }
     return targetUser;
   }

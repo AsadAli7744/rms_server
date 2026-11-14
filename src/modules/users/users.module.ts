@@ -5,9 +5,10 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { Restaurant } from '../restaurants/entities/restaurant.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { BranchesModule } from '../branches/branches.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Restaurant, Branch])],
+  imports: [TypeOrmModule.forFeature([User, Restaurant, Branch]), BranchesModule],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],

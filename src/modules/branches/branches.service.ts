@@ -7,6 +7,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Branch } from './entities/branch.entity';
 import { Restaurant } from '../restaurants/entities/restaurant.entity';
+import { User } from '../users/entities/user.entity';
+import { MenuItem } from '../menu-items/entities/menu-item.entity';
 import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
 import { QueryBranchDto } from './dto/query-branch.dto';
@@ -21,6 +23,10 @@ export class BranchesService {
     private readonly repo: Repository<Branch>,
     @InjectRepository(Restaurant)
     private readonly restaurantRepo: Repository<Restaurant>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+    @InjectRepository(MenuItem)
+    private readonly itemRepo: Repository<MenuItem>,
     private readonly branchSettingsService: BranchSettingsService,
   ) {}
 
@@ -92,6 +98,9 @@ export class BranchesService {
     if (query.restaurant_id != null) {
       qb.andWhere('b.restaurant_id = :rid', { rid: query.restaurant_id });
     }
+    if (query.id != null) {
+      qb.andWhere('b.id = :branchId', { branchId: query.id });
+    }
     if (query.branch_status) {
       qb.andWhere('b.branch_status = :bs', { bs: query.branch_status });
     }
@@ -103,6 +112,105 @@ export class BranchesService {
     qb.orderBy('b.id', 'ASC').skip(skip).take(limit);
     const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit };
+  }
+
+  /** First live branch for a restaurant, creating a main branch when none exists. */
+  async ensureDefaultBranch(
+    restaurantId: number,
+    actorId?: number | null,
+  ): Promise<Branch> {
+    const existing = await this.repo.findOne({
+      where: { restaurant_id: restaurantId, is_archived: false },
+      order: { id: 'ASC' },
+      relations: ['restaurant'],
+    });
+    if (existing) return existing;
+
+    const restaurant = await this.restaurantRepo.findOne({
+      where: { id: restaurantId },
+    });
+    if (!restaurant) {
+      throw new NotFoundException(`Restaurant ${restaurantId} not found`);
+    }
+
+    const codeRoot = (restaurant.code || `R${restaurantId}`)
+      .replace(/[^A-Za-z0-9]/g, '')
+      .slice(0, 24) || `R${restaurantId}`;
+
+    try {
+      return await this.create(
+        {
+          restaurant_id: restaurantId,
+          name: restaurant.name,
+          code: `${codeRoot}-MAIN`,
+          address_line_1: restaurant.name,
+          city: 'Main',
+          country: 'Pakistan',
+        },
+        actorId,
+      );
+    } catch (err) {
+      if (!(err instanceof ConflictException)) throw err;
+      return this.create(
+        {
+          restaurant_id: restaurantId,
+          name: restaurant.name,
+          code: `${codeRoot}-MAIN-${restaurantId}`,
+          address_line_1: restaurant.name,
+          city: 'Main',
+          country: 'Pakistan',
+        },
+        actorId,
+      );
+    }
+  }
+
+  /** Point the user at their restaurant's branch when they have none, or the wrong one. */
+  async attachUserToRestaurantBranch(userId: number, branch: Branch): Promise<void> {
+    if (!userId) return;
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user || user.restaurant_id !== branch.restaurant_id) return;
+    if (user.branch_id) {
+      const current = await this.repo.findOne({ where: { id: user.branch_id } });
+      if (current && current.restaurant_id === branch.restaurant_id && !current.is_archived) {
+        return;
+      }
+    }
+    user.branch_id = branch.id;
+    await this.userRepo.save(user);
+  }
+
+  /** Public QR menu: this branch's restaurant, currency, and active items. */
+  async getOrderingMenu(branchId: number) {
+    const branch = await this.repo.findOne({
+      where: { id: branchId, is_archived: false },
+      relations: ['restaurant'],
+    });
+    if (!branch) {
+      throw new NotFoundException(`Branch ${branchId} not found`);
+    }
+    const items = await this.itemRepo.find({
+      where: {
+        restaurant_id: branch.restaurant_id,
+        is_archived: false,
+        is_active: true,
+      },
+      relations: ['category'],
+      order: { id: 'ASC' },
+    });
+    return {
+      branch: {
+        id: branch.id,
+        name: branch.name,
+        restaurant_id: branch.restaurant_id,
+      },
+      restaurant: {
+        id: branch.restaurant.id,
+        name: branch.restaurant.name,
+        default_currency: branch.restaurant.default_currency,
+      },
+      items,
+    };
   }
 
   async findOne(id: number): Promise<Branch> {
